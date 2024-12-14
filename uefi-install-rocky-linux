@@ -1,0 +1,272 @@
+#!/usr/bin/python3 -u
+
+""" Install Rocky Linux from local block device in UEFI mode
+"""
+
+__contact__ = 'https://github.com/makhomed/uefi-install-rocky-linux'
+__license__ = 'GNU General Public License v3.0 or later'
+__version__ = '1.0.0'
+
+### variables ########################################################
+
+# only_use_blockdevices = [ '/dev/nvme0n1', '/dev/nvme1n1' ]
+
+# kickstart_url = 'https://example.com/ks.cfg'
+
+# vnc_installation_enabled = True
+
+# rocky_linux_version = 9
+
+######################################################################
+
+import configparser
+import json
+import os
+import shutil
+import subprocess
+import sys
+import urllib.parse
+
+from pathlib import Path
+
+def run(*args, **kwargs):
+    return subprocess.run(args, capture_output=kwargs.get('capture_output', True), check=kwargs.get('check', True), encoding='utf-8', errors='strict')
+
+class style:
+    RED = '\033[1;91m'
+    GREEN = '\033[1;92m'
+    YELLOW = '\033[1;93m'
+    WHITE = '\033[1;97m'
+    RESET = '\033[0m'
+
+def clear_screen():
+    print('\033c', end='')
+
+def info(*args, **kwargs):
+    print(f"{style.WHITE}", end='', file=sys.stderr, flush=True, **kwargs)
+    print(*args, sep='', file=sys.stderr, flush=True, **kwargs)
+    print(f"{style.RESET}", end='', file=sys.stderr, flush=True)
+
+def good(*args, **kwargs):
+    print(f"{style.GREEN}", end='', file=sys.stderr, flush=True, **kwargs)
+    print(*args, sep='', file=sys.stderr, flush=True, **kwargs)
+    print(f"{style.RESET}", end='', file=sys.stderr, flush=True)
+
+def warn(*args, **kwargs):
+    print(f"{style.YELLOW}", end='', file=sys.stderr, flush=True, **kwargs)
+    print(*args, sep='', file=sys.stderr, flush=True, **kwargs)
+    print(f"{style.RESET}", end='', file=sys.stderr, flush=True)
+
+def error(*args, **kwargs):
+    print(f"{style.RED}", end='', file=sys.stderr, flush=True, **kwargs)
+    print(*args, sep='', file=sys.stderr, flush=True, **kwargs)
+    print(f"{style.RESET}", end='', file=sys.stderr, flush=True)
+
+def fatal(*args, **kwargs):
+    error(*args, **kwargs)
+    sys.exit(1)
+
+### check for prerequisites
+
+clear_screen()
+
+if os.geteuid() != 0 or os.getegid() != 0:
+    script_basename = Path(sys.argv[0]).name
+    script_filename = f'this script ({Path(sys.argv[0]).name})' if script_basename else 'this script'
+    fatal('\n', f'{script_filename} must be started with root privileges', '\n')
+
+if not 'only_use_blockdevices' in globals():
+    fatal('\n', f'fatal error: only_use_blockdevices must be defined', '\n')
+
+if not isinstance(only_use_blockdevices, list):
+    fatal('\n', f'fatal error: only_use_blockdevices must be list, not {type(only_use_blockdevices).__name__}', '\n')
+
+for blockdevice in only_use_blockdevices:
+    if not Path(blockdevice).is_block_device():
+        fatal('\n', f'fatal error: block device {blockdevice} not exists', '\n')
+
+if not 'rocky_linux_version' in globals():
+    fatal('\n', f'fatal error: rocky_linux_version must be defined', '\n')
+
+if not isinstance(rocky_linux_version, int):
+    fatal('\n', f'fatal error: rocky_linux_version must be int, not {type(rocky_linux_version).__name__}', '\n')
+
+if not rocky_linux_version >= 8:
+    fatal('\n', f'fatal error:\n\nrocky_linux_version == {rocky_linux_version}\n\nrocky_linux_version must be >= 8', '\n')
+
+rocky_linux_version_url = f'https://download.rockylinux.org/pub/rocky/{rocky_linux_version}/'
+completed_process = run('curl', '--silent', '--show-error', '--include', rocky_linux_version_url)
+stdout = completed_process.stdout.strip()
+stderr = completed_process.stderr.strip()
+returncode = completed_process.returncode
+if returncode != 0:
+    clear_screen()
+    info(f'\ncurl {rocky_linux_version_url}\n')
+    warn(stderr,'\n')
+    fatal(f'fatal error: expected 200 status, got curl return code {returncode}\n')
+if stderr:
+    clear_screen()
+    info(f'\ncurl {rocky_linux_version_url}\n')
+    warn(stderr,'\n')
+    fatal(f'fatal error: unexpected error message\n')
+assert stdout != '' and stderr == ''
+status_line = stdout.splitlines()[0].strip()
+assert status_line.upper().startswith('HTTP/')
+status = int(status_line.split()[1])
+if status != 200:
+    clear_screen()
+    info(f'\ncurl {rocky_linux_version_url}\n')
+    warn(stdout.split('\n\n', maxsplit=1)[0],'\n')
+    fatal(f'fatal error: expected 200 http status, got {status} http status\n\n\tRocky Linux {rocky_linux_version} not exists yet\n')
+
+unattended_installation_enabled = 'kickstart_url' in globals() and kickstart_url
+vnc_installation_enabled = 'vnc_installation_enabled' in globals() and vnc_installation_enabled
+if not unattended_installation_enabled and not vnc_installation_enabled:
+    fatal('\nfatal error: must be enabled at least one of two modes:\n\n'
+          '\t    unattended installation mode (via kickstart file)\n'
+          '\tor interactive installation mode (via VNC connection)\n\n'
+          'or both these installation modes simultaneously - in this case you will be able to connect to the target system\n'
+          'using your VNC viewer and monitor the installation progress, partially/completely automated via kickstart file.\n')
+
+if unattended_installation_enabled and (kickstart_url.lower().startswith('https://') or kickstart_url.lower().startswith('http://')):
+    completed_process = run('curl', '--silent', '--show-error', '--include', kickstart_url, check=False)
+    stdout = completed_process.stdout.strip()
+    stderr = completed_process.stderr.strip()
+    returncode = completed_process.returncode
+    if returncode != 0:
+        clear_screen()
+        info(f'\ncurl {kickstart_url}\n')
+        warn(stderr,'\n')
+        fatal(f'fatal error: expected 200 status, got curl return code {returncode}\n')
+    if stderr:
+        clear_screen()
+        info(f'\ncurl {kickstart_url}\n')
+        warn(stderr,'\n')
+        fatal(f'fatal error: unexpected error message\n')
+    assert stdout != '' and stderr == ''
+    status_line = stdout.splitlines()[0].strip()
+    assert status_line.upper().startswith('HTTP/')
+    status = int(status_line.split()[1])
+    if status != 200:
+        clear_screen()
+        info(f'\ncurl {kickstart_url}\n')
+        warn(stdout.split('\n\n', maxsplit=1)[0],'\n')
+        fatal(f'fatal error: expected 200 http status, got {status} http status\n')
+
+### check what used blockdevices not contain any partitions
+
+blockdevices = json.loads(run('lsblk', '--exclude=1,7', '--paths', '--json').stdout.strip())['blockdevices']
+blockdevices = [ blockdevice for blockdevice in blockdevices if blockdevice['name'] in only_use_blockdevices ]
+not_empty_blockdevices = [ blockdevice['name'] for blockdevice in blockdevices if 'children' in blockdevice ]
+if not_empty_blockdevices: 
+    for blockdevice in not_empty_blockdevices:
+        warn('\n', run('lsblk', blockdevice).stdout.strip())
+    name = 'block devices' if len(not_empty_blockdevices) > 1 else 'block device'
+    value = ' '.join(not_empty_blockdevices)
+    fatal('\n', f'fatal error: {name} {value} not empty\n\n')
+
+### download required files from https://download.rockylinux.org/pub/rocky/
+
+media_repo_file = Path(f'/root/temp-files/rocky-linux-{rocky_linux_version}-media.repo')
+temp_files_base = Path(f'/root/temp-files/rocky-linux-{rocky_linux_version}')
+destination_dir = temp_files_base / 'EFI/BOOT'
+temp_mount_base = Path(f'/root/temp-mount/rocky-linux-{rocky_linux_version}')
+
+temp_files_base.mkdir(parents=True, exist_ok=True)
+destination_dir.mkdir(parents=True, exist_ok=True)
+temp_mount_base.mkdir(parents=True, exist_ok=True)
+
+def wget(url, filename=None):
+    basename = Path(urllib.parse.urlparse(url).path).name
+    filename = destination_dir / basename if filename is None else destination_dir / filename
+    time_cond = [ '--time-cond', filename ] if filename.is_file() else []
+    info(f'\n\ndownloading {url}\nto filename {filename}\n')
+    args = ['curl', '--progress-meter', '--location', '--output', filename] + time_cond + ['--remote-time', url]
+    run(*args, capture_output=False)
+
+wget(f'https://download.rockylinux.org/pub/rocky/{rocky_linux_version}/BaseOS/x86_64/kickstart/images/pxeboot/vmlinuz')
+wget(f'https://download.rockylinux.org/pub/rocky/{rocky_linux_version}/BaseOS/x86_64/kickstart/images/pxeboot/initrd.img')
+wget(f'https://download.rockylinux.org/pub/rocky/{rocky_linux_version}/BaseOS/x86_64/kickstart/EFI/BOOT/BOOTX64.EFI')
+wget(f'https://download.rockylinux.org/pub/rocky/{rocky_linux_version}/BaseOS/x86_64/kickstart/EFI/BOOT/grubx64.efi')
+wget(f'https://download.rockylinux.org/pub/rocky/{rocky_linux_version}/BaseOS/x86_64/kickstart/EFI/BOOT/mmx64.efi')
+wget(f'https://download.rockylinux.org/pub/rocky/{rocky_linux_version}/BaseOS/x86_64/kickstart/media.repo', media_repo_file)
+
+### generate grub.conf
+
+config = configparser.ConfigParser()
+config.read(media_repo_file)
+rocky_linux_name_minor_major_version = config['InstallMedia']['name']
+
+if unattended_installation_enabled:
+    inst_ks = f'inst.ks={kickstart_url}'
+else:
+    inst_ks = ''
+
+if vnc_installation_enabled:
+    vnc_password = run('pwgen', '-s', '8', '1').stdout.strip()
+    inst_vnc = f'inst.resolution=1280x1024 inst.vnc inst.vncpassword={vnc_password}'
+else:
+    inst_vnc = ''
+
+grub_cfg_content = f"""
+set default=0
+set timeout=1
+menuentry "UEFI install {rocky_linux_name_minor_major_version}" {{
+    linux /EFI/BOOT/vmlinuz {inst_ks} inst.xtimeout=7200 inst.nosave=all inst.selinux=0 selinux=0 transparent_hugepage=never {inst_vnc}
+    initrd /EFI/BOOT/initrd.img
+}}\n
+"""
+grub_cfg_filename = destination_dir / 'grub.cfg'
+Path(grub_cfg_filename).write_text(grub_cfg_content, encoding='utf-8', errors='strict')
+
+### delete old label only from used blockdevices
+
+for blockdevice in only_use_blockdevices:
+    if blockdevice.startswith('/dev/nvme'):
+        run('blkdiscard', '--force', blockdevice)
+    else:
+        run('wipefs', '--all', '--force', blockdevice)
+
+### create gpt label and EFI partitions
+
+for blockdevice in only_use_blockdevices:
+    run('parted', '--script', blockdevice, 'mklabel', 'gpt')
+    run('parted', '--script', blockdevice, 'mkpart', '"EFI System Partition"', 'fat32', '1MiB', '4097MiB')
+    run('parted', '--script', blockdevice, 'set', '1', 'esp', 'on')
+    run('mkfs.fat', '-F32', f'{blockdevice}p1')
+
+### copy boot files to EFI partitions
+
+for blockdevice in only_use_blockdevices:
+    partition1 = f'{blockdevice}p1'
+    mountpoint = temp_mount_base / partition1[1:]
+    Path(mountpoint).mkdir(parents=True, exist_ok=True)
+    run('mount', '-o', 'rw,nosuid,nodev,noexec,auto,nouser,async,uid=0,gid=0,dmask=0077,fmask=0177,shortname=winnt,noatime', partition1, mountpoint)
+    shutil.copytree(temp_files_base, mountpoint, dirs_exist_ok=True)
+
+### print summary info and reboot
+
+clear_screen()
+info()
+info(f'Install {rocky_linux_name_minor_major_version}')
+info()
+info(f'UEFI boot from {" ".join(only_use_blockdevices)}')
+if unattended_installation_enabled:
+    info()
+    info(f'Using kickstart {kickstart_url}')
+if vnc_installation_enabled:
+    error()
+    error(f'VNC password: {vnc_password}')
+    warn()
+    warn(f'VNC password: {vnc_password}')
+    good()
+    good(f'VNC password: {vnc_password}')
+    info()
+    info(f'IP addresses: {run("hostname", "--all-ip-addresses").stdout.strip()}')
+else:
+    error()
+    error(f'VNC connection disabled')
+info()
+input('Press <Enter> to reboot\n\n')
+
+os.execlp('reboot', 'reboot')
