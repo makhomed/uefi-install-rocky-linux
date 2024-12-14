@@ -255,10 +255,6 @@ if unattended_installation_enabled:
     info()
     info(f'Using kickstart {kickstart_url}')
 if vnc_installation_enabled:
-    error()
-    error(f'VNC password: {vnc_password}')
-    warn()
-    warn(f'VNC password: {vnc_password}')
     good()
     good(f'VNC password: {vnc_password}')
     info()
@@ -268,5 +264,4 @@ else:
     error(f'VNC connection disabled')
 info()
 input('Press <Enter> to reboot\n\n')
-
 os.execlp('reboot', 'reboot')
