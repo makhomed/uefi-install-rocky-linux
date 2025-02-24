@@ -5,17 +5,53 @@
 
 __contact__ = 'https://github.com/makhomed/uefi-install-rocky-linux'
 __license__ = 'GNU General Public License v3.0 or later'
-__version__ = '1.0.0'
+__version__ = '1.1.0'
+
+
+"""
+
+Changes with uefi-install-rocky-linux 1.1.0                24 Feb 2025
+
+    *) Only /dev/disk/by-id/ static disk names can be used.
+
+    *) Use blkdiscard only for SSD, for HDD it is useless.
+
+    *) Extra linux kernel cmdline arguments can be added.
+
+Changes with uefi-install-rocky-linux 1.0.0                14 Dec 2024
+
+    *) The first public version.
+
+"""
+
 
 ### variables ########################################################
 
-# only_use_blockdevices = [ '/dev/nvme0n1', '/dev/nvme1n1' ]
+### basic settings ###
 
-# kickstart_url = 'https://example.com/ks.cfg'
+# only_use_blockdevices = [ '/dev/disk/by-id/ata-INTEL_SSDSC2KB960G8_PHYF874700EG960CGN', '/dev/disk/by-id/ata-INTEL_SSDSC2KB960G8_PHYF87470114960CGN' ]
+
+# kickstart_url = 'https://example.com/server-name-kickstart.cfg'
 
 # vnc_installation_enabled = True
 
 # rocky_linux_version = 9
+
+### advanced settings ###
+
+# eth0_mac_address = '3c:ec:ef:29:73:44'
+# eth1_mac_address = '3c:ec:ef:29:73:45'
+
+# eth0_ipv4_address = '197.149.57.183'
+# eth0_ipv4_gateway = '197.149.57.1'
+# eth0_ipv4_netcidr = 24
+# bootdev= 'eth0'
+
+# nameservers_info = f'nameserver=1.1.1.1 nameserver=1.0.0.1 nameserver=8.8.8.8'
+# rename_interface = f'ifname=eth0:{eth0_mac_address} ifname=eth1:{eth1_mac_address}'
+# interface_config = f'{nameservers_info} {rename_interface} ip={eth0_ipv4_address}::{eth0_ipv4_gateway}:{eth0_ipv4_netcidr}::{bootdev}:none bootdev={bootdev}'
+
+# linux_cmdline_extra = f'{interface_config}'
 
 ######################################################################
 
@@ -29,14 +65,15 @@ import urllib.parse
 
 from pathlib import Path
 
-def run(*args, **kwargs):
-    return subprocess.run(args, capture_output=kwargs.get('capture_output', True), check=kwargs.get('check', True), encoding='utf-8', errors='strict')
-
 class style:
+    """ https://gist.github.com/JBlond/2fea43a3049b38287e5e9cefc87b2124
+    """
     RED = '\033[1;91m'
     GREEN = '\033[1;92m'
     YELLOW = '\033[1;93m'
     WHITE = '\033[1;97m'
+    PURPLE = '\033[1;35m'
+    CYAN = '\033[1;36m'
     RESET = '\033[0m'
 
 def clear_screen():
@@ -66,6 +103,16 @@ def fatal(*args, **kwargs):
     error(*args, **kwargs)
     sys.exit(1)
 
+def run(*args, **kwargs):
+    if kwargs.get('echo_command_line', True) and kwargs.get('echo_space_before', True):
+        print()
+    if kwargs.get('echo_command_line', True):
+        print( style.CYAN, *args, style.RESET)
+    completed_process = subprocess.run(args, capture_output=kwargs.get('capture_output', True), check=kwargs.get('check', True), encoding='utf-8', errors='strict')
+    if kwargs.get('echo_command_line', True) and kwargs.get('echo_space_after', True):
+        print()
+    return completed_process
+
 ### check for prerequisites
 
 clear_screen()
@@ -82,6 +129,10 @@ if not isinstance(only_use_blockdevices, list):
     fatal('\n', f'fatal error: only_use_blockdevices must be list, not {type(only_use_blockdevices).__name__}', '\n')
 
 for blockdevice in only_use_blockdevices:
+    if not blockdevice.startswith('/dev/disk/by-id/'):
+        fatal('\n', f'fatal error: block device name {blockdevice} must start with /dev/disk/by-id/', '\n')
+
+for blockdevice in only_use_blockdevices:
     if not Path(blockdevice).is_block_device():
         fatal('\n', f'fatal error: block device {blockdevice} not exists', '\n')
 
@@ -95,7 +146,7 @@ if not rocky_linux_version >= 8:
     fatal('\n', f'fatal error:\n\nrocky_linux_version == {rocky_linux_version}\n\nrocky_linux_version must be >= 8', '\n')
 
 rocky_linux_version_url = f'https://download.rockylinux.org/pub/rocky/{rocky_linux_version}/'
-completed_process = run('curl', '--silent', '--show-error', '--include', rocky_linux_version_url)
+completed_process = run('curl', '--silent', '--show-error', '--include', rocky_linux_version_url, echo_command_line=False)
 stdout = completed_process.stdout.strip()
 stderr = completed_process.stderr.strip()
 returncode = completed_process.returncode
@@ -106,7 +157,7 @@ if returncode != 0:
     fatal(f'fatal error: expected 200 status, got curl return code {returncode}\n')
 if stderr:
     clear_screen()
-    info(f'\ncurl {rocky_linux_version_url}\n')
+    info(f'\ncurl {rocky_linux_version_url}\n', echo_command_line=False)
     warn(stderr,'\n')
     fatal(f'fatal error: unexpected error message\n')
 assert stdout != '' and stderr == ''
@@ -129,7 +180,7 @@ if not unattended_installation_enabled and not vnc_installation_enabled:
           'using your VNC viewer and monitor the installation progress, partially/completely automated via kickstart file.\n')
 
 if unattended_installation_enabled and (kickstart_url.lower().startswith('https://') or kickstart_url.lower().startswith('http://')):
-    completed_process = run('curl', '--silent', '--show-error', '--include', kickstart_url, check=False)
+    completed_process = run('curl', '--silent', '--show-error', '--include', kickstart_url, check=False, echo_command_line=False)
     stdout = completed_process.stdout.strip()
     stderr = completed_process.stderr.strip()
     returncode = completed_process.returncode
@@ -155,7 +206,7 @@ if unattended_installation_enabled and (kickstart_url.lower().startswith('https:
 
 ### check what used blockdevices not contain any partitions
 
-blockdevices = json.loads(run('lsblk', '--exclude=1,7', '--paths', '--json').stdout.strip())['blockdevices']
+blockdevices = json.loads(run('lsblk', '--exclude=1,7', '--paths', '--json', echo_command_line=False).stdout.strip())['blockdevices']
 blockdevices = [ blockdevice for blockdevice in blockdevices if blockdevice['name'] in only_use_blockdevices ]
 not_empty_blockdevices = [ blockdevice['name'] for blockdevice in blockdevices if 'children' in blockdevice ]
 if not_empty_blockdevices: 
@@ -208,11 +259,16 @@ if vnc_installation_enabled:
 else:
     inst_vnc = ''
 
+if 'linux_cmdline_extra' in globals() and isinstance(linux_cmdline_extra, str):
+    inst_extra = linux_cmdline_extra
+else:
+    inst_extra = ''
+
 grub_cfg_content = f"""
 set default=0
 set timeout=1
 menuentry "UEFI install {rocky_linux_name_minor_major_version}" {{
-    linux /EFI/BOOT/vmlinuz {inst_ks} inst.xtimeout=7200 inst.nosave=all inst.selinux=0 selinux=0 transparent_hugepage=never {inst_vnc}
+    linux /EFI/BOOT/vmlinuz {inst_ks} inst.xtimeout=7200 inst.nosave=all inst.selinux=0 selinux=0 transparent_hugepage=never {inst_vnc} {inst_extra}
     initrd /EFI/BOOT/initrd.img
 }}\n
 """
@@ -221,11 +277,25 @@ Path(grub_cfg_filename).write_text(grub_cfg_content, encoding='utf-8', errors='s
 
 ### delete old label only from used blockdevices
 
+def disk_short_name(disk):
+    return Path(disk).resolve(strict=True).name
+
+def is_rotational_disk(disk):
+    return int(Path(f'/sys/block/{disk_short_name(disk)}/queue/rotational').read_text()) == 1
+
+print()
 for blockdevice in only_use_blockdevices:
-    if blockdevice.startswith('/dev/nvme'):
+    print(
+        f' {style.WHITE + "/dev/" + disk_short_name(blockdevice) + style.RESET }'
+        f' {style.RED + "HDD" + style.RESET if is_rotational_disk(blockdevice) else style.GREEN + "SSD" + style.RESET}'
+        f' {blockdevice}'
+        )
+print()
+
+for blockdevice in only_use_blockdevices:
+    run('wipefs', '--all', '--force', blockdevice)
+    if not is_rotational_disk(blockdevice):
         run('blkdiscard', '--force', blockdevice)
-    else:
-        run('wipefs', '--all', '--force', blockdevice)
 
 ### create gpt label and EFI partitions
 
@@ -233,16 +303,18 @@ for blockdevice in only_use_blockdevices:
     run('parted', '--script', blockdevice, 'mklabel', 'gpt')
     run('parted', '--script', blockdevice, 'mkpart', '"EFI System Partition"', 'fat32', '1MiB', '4097MiB')
     run('parted', '--script', blockdevice, 'set', '1', 'esp', 'on')
-    run('mkfs.fat', '-F32', f'{blockdevice}p1')
+    run('partprobe')
+    run('mkfs.fat', '-F32', f'{blockdevice}-part1')
 
 ### copy boot files to EFI partitions
 
 for blockdevice in only_use_blockdevices:
-    partition1 = f'{blockdevice}p1'
+    partition1 = f'{blockdevice}-part1'
     mountpoint = temp_mount_base / partition1[1:]
     Path(mountpoint).mkdir(parents=True, exist_ok=True)
-    run('mount', '-o', 'rw,nosuid,nodev,noexec,auto,nouser,async,uid=0,gid=0,dmask=0077,fmask=0177,shortname=winnt,noatime', partition1, mountpoint)
+    run('mount', '-o', 'noexec,dmask=0077,fmask=0177,shortname=winnt,noatime,discard', partition1, mountpoint)
     shutil.copytree(temp_files_base, mountpoint, dirs_exist_ok=True)
+    run('umount', partition1)
 
 ### print summary info and reboot
 
@@ -260,8 +332,8 @@ if vnc_installation_enabled:
     info()
     info(f'IP addresses: {run("hostname", "--all-ip-addresses").stdout.strip()}')
 else:
-    error()
-    error(f'VNC connection disabled')
+    warn()
+    warn(f'VNC connection disabled')
 info()
 input('Press <Enter> to reboot\n\n')
 os.execlp('reboot', 'reboot')
