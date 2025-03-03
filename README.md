@@ -1,8 +1,9 @@
 
-# uefi-install-rocky-linux (version 1.1.0)
+# uefi-install-rocky-linux (version 1.2.0)
+
 Install Rocky Linux from local block device in UEFI mode
 
-## Usaage:
+## Usage:
 
 Boot server to Rescue Console, connect to server via ssh and run these commands as root:
 
@@ -14,43 +15,11 @@ Boot server to Rescue Console, connect to server via ssh and run these commands 
 
 ```# cd uefi-install-rocky-linux/```
 
-```# vim uefi-install-rocky-linux```
+```# mv uefi-install-rocky-linux.toml.example uefi-install-rocky-linux.toml```
 
-Edit variables block on the start of the script and enter apropriate custom values:
+```# vim uefi-install-rocky-linux.toml```
 
-```
-### variables ########################################################
-
-### basic settings ###
-
-# only_use_blockdevices = [ '/dev/disk/by-id/ata-INTEL_SSDSC2KB960G8_PHYF874700EG960CGN', '/dev/disk/by-id/ata-INTEL_SSDSC2KB960G8_PHYF87470114960CGN' ]
-
-# kickstart_url = 'https://example.com/server-name-kickstart.cfg'
-
-# vnc_installation_enabled = True
-
-# rocky_linux_version = 9
-
-### advanced settings ###
-
-# eth0_mac_address = '3c:ec:ef:29:73:44'
-# eth1_mac_address = '3c:ec:ef:29:73:45'
-
-# eth0_ipv4_address = '197.149.57.183'
-# eth0_ipv4_gateway = '197.149.57.1'
-# eth0_ipv4_netcidr = 24
-# bootdev= 'eth0'
-
-# nameservers_info = f'nameserver=1.1.1.1 nameserver=1.0.0.1 nameserver=8.8.8.8'
-# rename_interface = f'ifname=eth0:{eth0_mac_address} ifname=eth1:{eth1_mac_address}'
-# interface_config = f'{nameservers_info} {rename_interface} ip={eth0_ipv4_address}::{eth0_ipv4_gateway}:{eth0_ipv4_netcidr}::{bootdev}:none bootdev={bootdev}'
-
-# linux_cmdline_extra = f'{interface_config}'
-
-######################################################################
-```
-
-Save file after editing and run script for execution:
+Edit settings in the uefi-install-rocky-linux.toml configuration file and run script for execution:
 
 ```# ./uefi-install-rocky-linux```
 
@@ -61,13 +30,13 @@ Summary screen will be looks like this:
 ```
 Install Rocky Linux 9.5
 
-UEFI boot from /dev/disk/by-id/ata-INTEL_SSDSC2KB960G8_PHYF874700EG960CGN /dev/disk/by-id/ata-INTEL_SSDSC2KB960G8_PHYF87470114960CGN
+UEFI boot from /dev/disk/by-id/ata-INTEL_SSDSC2KB960G8_PHYF82857386960CGN /dev/disk/by-id/ata-INTEL_SSDSC2KB960G8_PHYF82857217960CGN
 
-Using kickstart https://example.com/server-name-kickstart.cfg
+Using kickstart [https://example.com/server-name-kickstart.cfg](https://example.com/linux-server-name-kickstart.cfg)
 
 VNC password: E3klJrWI
 
-IP addresses: 197.149.57.183 2001:0DB8:4ED2:3217::2
+IP addresses: 11.22.33.44 2001:0DB8:4ED2:3217::55
 
 Press <Enter> to reboot
 ```

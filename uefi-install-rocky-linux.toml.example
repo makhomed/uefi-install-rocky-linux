@@ -1,0 +1,64 @@
+
+####
+#### Install Rocky Linux from local block device in UEFI mode
+####
+
+###
+### basic settings for uefi-install-rocky-linux (required)
+###
+
+##
+## only use these block devices, ignore all other block devices:
+##
+
+# only_use_blockdevices = [ 
+#     '/dev/disk/by-id/ata-INTEL_SSDSC2KB960G8_PHYF82857386960CGN', 
+#     '/dev/disk/by-id/ata-INTEL_SSDSC2KB960G8_PHYF82857217960CGN',
+# ]
+
+##
+## install latest available minor version for this major version:
+##
+
+#
+# rocky_linux_version = 9
+#
+
+##
+## enable or disable VNC installation mode for 8 or 9 OS version:
+##
+
+#
+# vnc_installation_enabled = false
+#
+
+##
+## partially or completely automated installation via kickstart file:
+##
+
+#
+# kickstart_url = 'https://example.com/linux-server-name-kickstart.cfg'
+#
+
+###############################################################################
+
+###
+### advanced settings for uefi-install-rocky-linux (optional)
+###
+
+## static IP configure via linux command line required
+## only if hosting provider does not provide automated 
+## IP settings via DHCP in the server normal boot mode
+
+#
+# linux_cmdline_extra = """\
+#                     ifname=eth0:11:22:33:44:55:66 \
+#                     ifname=eth1:11:22:33:44:55:67 \
+#                     ip=11.22.33.44::11.22.33.1:24::eth0:none \
+#                     bootdev=eth0 \
+#                     nameserver=1.1.1.1 \
+#                     nameserver=1.0.0.1 \
+#                     nameserver=8.8.8.8 \
+#                     """
+#
+
