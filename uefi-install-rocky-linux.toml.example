@@ -12,8 +12,8 @@
 ##
 
 # only_use_blockdevices = [ 
-#     '/dev/disk/by-id/ata-INTEL_SSDSC2KB960G8_PHYF82857386960CGN', 
-#     '/dev/disk/by-id/ata-INTEL_SSDSC2KB960G8_PHYF82857217960CGN',
+#     '/dev/disk/by-id/ata-INTEL_SSDSC2KB960G8_PHYF82AAAAAA960CGN',
+#     '/dev/disk/by-id/ata-INTEL_SSDSC2KB960G8_PHYF82BBBBBB960CGN', 
 # ]
 
 ##
