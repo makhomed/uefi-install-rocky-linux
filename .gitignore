@@ -1,7 +1,9 @@
 
-# ignore toml configuration files
+# ignore configuration files
+
 *.toml
 
-# ignore vim swap files
+# ignore vim temporary files
+
 *.swp
 
