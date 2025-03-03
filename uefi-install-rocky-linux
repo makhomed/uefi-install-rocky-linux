@@ -1,6 +1,6 @@
 #!/usr/bin/python3 -u
 
-""" Install Rocky Linux from local block device in UEFI mode
+""" Install Rocky Linux from a local block device in UEFI mode
 """
 
 __contact__ = 'https://github.com/makhomed/uefi-install-rocky-linux'

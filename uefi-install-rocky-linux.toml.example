@@ -1,6 +1,6 @@
 
 ####
-#### Install Rocky Linux from local block device in UEFI mode
+#### Install Rocky Linux from a local block device in UEFI mode
 ####
 
 ###
@@ -61,4 +61,10 @@
 #                     nameserver=8.8.8.8 \
 #                     """
 #
+
+###
+###   https://anaconda-installer.readthedocs.io/en/latest/boot-options.html
+###
+###   https://docs.kernel.org/admin-guide/nfs/nfsroot.html#kernel-command-line
+###
 
