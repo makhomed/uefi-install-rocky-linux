@@ -17,7 +17,7 @@ Changes with uefi-install-rocky-linux 1.2.1                07 Mar 2025
 
 Changes with uefi-install-rocky-linux 1.2.0                03 Mar 2025
 
-    *) read config from uefi-install-rocky-linux.toml file.
+    *) Read config from uefi-install-rocky-linux.toml file.
 
 
 Changes with uefi-install-rocky-linux 1.1.0                24 Feb 2025
