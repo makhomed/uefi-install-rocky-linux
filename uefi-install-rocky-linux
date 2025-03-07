@@ -5,14 +5,19 @@
 
 __contact__ = 'https://github.com/makhomed/uefi-install-rocky-linux'
 __license__ = 'GNU General Public License v3.0 or later'
-__version__ = '1.2.0'
+__version__ = '1.2.1'
 
 
 """
 
+Changes with uefi-install-rocky-linux 1.2.1                07 Mar 2025
+
+    *) Improved disk list formatting on summary screen.
+
+
 Changes with uefi-install-rocky-linux 1.2.0                03 Mar 2025
 
-    *) read config from uefi-install-rocky-linux.toml
+    *) read config from uefi-install-rocky-linux.toml file.
 
 
 Changes with uefi-install-rocky-linux 1.1.0                24 Feb 2025
@@ -313,10 +318,10 @@ clear_screen()
 info()
 info(f'Install {rocky_linux_name_minor_major_version}')
 info()
-info(f'UEFI boot from {" ".join(only_use_blockdevices)}')
+info(f'UEFI boot from:\n\n\t{"\n\t".join(only_use_blockdevices)}')
 if unattended_installation_enabled:
     info()
-    info(f'Using kickstart {kickstart_url}')
+    info(f'Using kickstart: {kickstart_url}')
 if vnc_installation_enabled:
     good()
     good(f'VNC password: {vnc_password}')
@@ -324,7 +329,7 @@ if vnc_installation_enabled:
     info(f'IP addresses: {run("hostname", "--all-ip-addresses").stdout.strip()}')
 else:
     warn()
-    warn(f'VNC connection disabled')
+    warn(f'VNC connection: disabled')
 info()
 input('Press <Enter> to reboot\n\n')
 os.execlp('reboot', 'reboot')

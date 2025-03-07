@@ -1,5 +1,5 @@
 
-# uefi-install-rocky-linux (version 1.2.0)
+# uefi-install-rocky-linux (version 1.2.1)
 
 Install Rocky Linux from a local block device in UEFI mode
 
@@ -28,9 +28,12 @@ The summary screen after successful execution will look like this:
 ```
 Install Rocky Linux 9.5
 
-UEFI boot from /dev/disk/by-id/ata-INTEL_SSDSC2KB960G8_PHYF82857386960CGN /dev/disk/by-id/ata-INTEL_SSDSC2KB960G8_PHYF82857217960CGN
+UEFI boot from:
 
-Using kickstart https://example.com/linux-server-name-kickstart.cfg
+        /dev/disk/by-id/ata-INTEL_SSDSC2KB960G8_PHYF82AAAAAA960CGN
+        /dev/disk/by-id/ata-INTEL_SSDSC2KB960G8_PHYF82BBBBBB960CGN
+
+Using kickstart: https://example.com/linux-server-name-kickstart.cfg
 
 VNC password: E3klJrWI
 
