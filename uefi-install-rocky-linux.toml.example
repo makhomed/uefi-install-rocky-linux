@@ -1,11 +1,17 @@
 
+###############################################################################
+
 ####
 #### Install Rocky Linux from a local block device in UEFI mode
 ####
 
+###############################################################################
+
 ###
 ### basic settings for uefi-install-rocky-linux (required)
 ###
+
+###############################################################################
 
 ##
 ## only use these block devices, ignore all other block devices:
@@ -16,6 +22,8 @@
 #     '/dev/disk/by-id/ata-INTEL_SSDSC2KB960G8_PHYF82BBBBBB960CGN', 
 # ]
 
+###############################################################################
+
 ##
 ## install latest available minor version for this major version:
 ##
@@ -24,6 +32,8 @@
 # rocky_linux_version = 9
 #
 
+###############################################################################
+
 ##
 ## enable or disable VNC installation mode for 8 or 9 OS version:
 ##
@@ -31,6 +41,8 @@
 #
 # vnc_installation_enabled = false
 #
+
+###############################################################################
 
 ##
 ## partially or completely automated installation via kickstart file:
@@ -45,6 +57,8 @@
 ###
 ### advanced settings for uefi-install-rocky-linux (optional)
 ###
+
+###############################################################################
 
 ## static IP configure via linux command line required
 ## only if hosting provider does not provide automated 
@@ -62,9 +76,39 @@
 #                     """
 #
 
+###############################################################################
+
 ###
-###   https://anaconda-installer.readthedocs.io/en/latest/boot-options.html
+### Documentation
 ###
-###   https://docs.kernel.org/admin-guide/nfs/nfsroot.html#kernel-command-line
-###
+
+###############################################################################
+
+##
+## Anaconda Boot Options
+##
+
+#
+# https://anaconda-installer.readthedocs.io/en/latest/boot-options.html
+#
+
+#
+# https://anaconda-installer.readthedocs.io/en/latest/boot-options.html#ip
+#
+
+###############################################################################
+
+##
+## Kernel command-line parameters
+##
+
+#
+# https://docs.kernel.org/admin-guide/kernel-parameters.html
+#
+
+#
+# https://docs.kernel.org/admin-guide/nfs/nfsroot.html#kernel-command-line
+#
+
+###############################################################################
 
