@@ -1,5 +1,5 @@
 
-# uefi-install-rocky-linux (version 1.2.1)
+# uefi-install-rocky-linux (version 1.3.0)
 
 Install Rocky Linux from a local block device in UEFI mode
 
